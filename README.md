@@ -1,6 +1,6 @@
 # iDENTify
 
-**iDENTify** is an iOS app that uses on-device machine learning to detect dental cavities in real time. Point your camera at an intraoral photo, tap Analyze, and the app returns bounding-box detections with per-cavity severity ratings and treatment urgency scores — all without sending any image to a server.
+**[identify.dev](https://identify.dev)** &nbsp;·&nbsp; iDENTify is an iOS app that uses on-device machine learning to detect dental cavities in real time. Point your camera at an intraoral photo, tap Analyze, and the app returns bounding-box detections with per-cavity severity ratings and treatment urgency scores — all without sending any image to a server.
 
 ---
 
