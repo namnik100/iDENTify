@@ -1,55 +1,102 @@
 # iDENTify
 
-**iDENTify** is a dental image classification app powered by computer vision and deep learning. Built to assist in preliminary dental diagnostics, the system uses trained models to classify intraoral images and highlight potential dental conditions.
-
-This project emphasizes the use of advanced computer vision techniques tailored for medical imagery — focusing on performance, accuracy, and ease of deployment in clinical and research settings.
+**iDENTify** is an iOS app that uses on-device machine learning to detect dental cavities in real time. Point your camera at an intraoral photo, tap Analyze, and the app returns bounding-box detections with per-cavity severity ratings and treatment urgency scores — all without sending any image to a server.
 
 ---
 
-## Core Computer Vision Components
+## How it works
 
-- **Image Classification**  
-  Built using **TensorFlow** and **Keras**, Identify uses CNN-based architectures fine-tuned on curated dental datasets to classify teeth, identify common issues (e.g., caries, plaque), and segment specific regions.
-
-- **Preprocessing Pipelines**  
-  Utilizes **OpenCV** and **scikit-image** to normalize lighting, isolate regions of interest, and enhance clinical image clarity.
-
-- **Model Optimization**  
-  Exported models are converted with **ONNX** and optionally accelerated using **TensorRT** for deployment on platforms like **Jetson Nano** and other embedded devices.
-
-- **Visualization Tools**  
-  Real-time result rendering with overlays using OpenCV and Matplotlib to support intuitive review.
+1. **Capture** — take a photo with the camera or pick one from your library
+2. **Preprocess** — the image is letterbox-resized to 640 × 640 and normalized for YOLO input
+3. **Infer** — a YOLOv11n model runs on-device via TensorFlow Lite
+4. **Parse** — YOLO output tensors (`[1, 84, 8400]`) are decoded and filtered with non-maximum suppression
+5. **Review** — detected cavities are shown with bounding boxes, confidence scores, severity levels, and recommended next steps
 
 ---
 
-## Tech Stack
+## Tech stack
 
-| Purpose               | Tools / Libraries                      |
-|-----------------------|-----------------------------------------|
-| Deep Learning         | TensorFlow, Keras, ONNX, PyTorch (optional) |
-| Image Processing      | OpenCV, scikit-image                   |
-| Deployment (Edge)     | Jetson Nano, TensorRT, Flask (optional API) |
-| Annotation / Datasets | CVAT, LabelImg                         |
+| Layer | Details |
+|---|---|
+| Language | Swift 5.0 |
+| UI | SwiftUI |
+| ML runtime | TensorFlow Lite (CocoaPods) |
+| Model | YOLOv11n — converted to `.tflite` |
+| Architecture | MVVM |
+| Min deployment | iOS 17.0 |
 
 ---
 
-## Directory Structure
-identify/
-├── models/             # Trained TensorFlow/ONNX models
-├── data/               # Sample dental image dataset
-├── src/
-│   ├── preprocess/     # Image filtering, ROI extraction
-│   ├── classify/       # Model loading and prediction
-│   └── visualize/      # Overlay outputs, UI hooks
-├── app.py              # Optional Flask web API
+## Project structure
+
+```
+iDENTify/
+├── iDENTify/                        # App source
+│   ├── iDENTifyApp.swift            # Entry point
+│   ├── ContentView.swift            # Home screen
+│   ├── CameraViewModel.swift        # Central state + ML orchestration
+│   ├── ImagePicker.swift            # Camera / photo library bridge
+│   ├── ImagePreviewView.swift       # Review screen before analysis
+│   ├── ResultsView.swift            # Detection results + bounding boxes
+│   ├── CavityDetectionCard.swift    # Per-cavity UI card
+│   ├── CavityDetectionService.swift # TFLite inference engine
+│   ├── CavityDetectionModels.swift  # Data models
+│   ├── ImageProcessingUtils.swift   # Letterboxing, NMS, normalization
+│   ├── NavigationState.swift        # App navigation state machine
+│   └── aviScan-YOLOv11n-v1.0.tflite
+├── iDENTify.xcodeproj/
+├── Podfile
 └── README.md
+```
 
 ---
 
-##  Quickstart
+## ML model
+
+The app loads **aviScan-YOLOv11n-v1.0.tflite**, a YOLOv11n model trained on intraoral dental imagery and exported to TensorFlow Lite for on-device inference. The model outputs an `[1, 84, 8400]` tensor (4 bbox coords + 80 class scores × 8400 anchors) which `CavityDetectionService` decodes, confidence-filters, and deduplicates with NMS before surfacing results.
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- Xcode 15+
+- CocoaPods (`brew install cocoapods`)
+- iPhone or iOS Simulator running iOS 17+
+
+### Install & run
 
 ```bash
-git clone https://github.com/yourusername/identify.git
-cd identify
-pip install -r requirements.txt
-python src/classify/classify_image.py --image path/to/image.jpg
+git clone https://github.com/yourusername/iDENTify.git
+cd iDENTify
+pod install
+open iDENTify.xcworkspace
+```
+
+Select a target device and press **Run**.
+
+---
+
+## Architecture
+
+```
+ContentView
+    └── CameraViewModel  ──────────────────────────┐
+         ├── ImagePicker (camera / library)         │
+         ├── ImagePreviewView                       │
+         │    └── triggers analysis                 │
+         └── ResultsView                            │
+              └── bounding box overlay              │
+                                                    ▼
+                              CavityDetectionService
+                               ├── TFLite Interpreter
+                               ├── ImageProcessingUtils
+                               │    ├── letterbox resize → 640×640
+                               │    ├── pixel buffer → float tensor
+                               │    └── NMS
+                               └── CavityDetectionModels
+                                    ├── CavityDetection
+                                    ├── DetectionResult
+                                    └── CavitySeverity / UrgencyLevel
+```

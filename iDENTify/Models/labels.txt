@@ -1,4 +1,0 @@
-cavity
-normal
-cavity
-normal
